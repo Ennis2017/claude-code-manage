@@ -51,6 +51,10 @@ export interface UserMcpInfo {
   mtime: string;
 }
 
+export interface OauthAccount {
+  display_name: string;
+}
+
 export interface UserConfig {
   settings: SettingsJson | null;
   keybindings: FileContent | null;
@@ -60,6 +64,7 @@ export interface UserConfig {
   agents: AgentFile[];
   rules: RuleFile[];
   mcp: UserMcpInfo;
+  oauth_account: OauthAccount | null;
 }
 
 export interface ProjectConfig {

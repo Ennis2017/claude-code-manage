@@ -191,6 +191,16 @@ pub fn scan_user_mcp(claude_json_path: &Path) -> UserMcpInfo {
     info
 }
 
+fn scan_oauth_account(claude_json: &Path) -> Option<OauthAccount> {
+    if !claude_json.exists() { return None; }
+    let content = fs::read_to_string(claude_json).ok()?;
+    let raw: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let oauth = raw.get("oauthAccount")?;
+    let display_name = oauth.get("displayName").and_then(|v| v.as_str())?.to_string();
+    if display_name.is_empty() { return None; }
+    Some(OauthAccount { display_name })
+}
+
 pub fn scan_user_config(claude_dir: &Path) -> UserConfig {
     let claude_json = claude_dir
         .parent()
@@ -205,6 +215,7 @@ pub fn scan_user_config(claude_dir: &Path) -> UserConfig {
         agents: scan_agents(&claude_dir.join("agents")),
         rules: scan_rules(&claude_dir.join("rules")),
         mcp: scan_user_mcp(&claude_json),
+        oauth_account: scan_oauth_account(&claude_json),
     }
 }
 

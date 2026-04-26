@@ -22,6 +22,8 @@ export function Rail({ active, projectId }: RailProps) {
   };
   const projects = snapshot?.projects || [];
   const cliVersion = snapshot?.claude_code_version;
+  const displayName = snapshot?.user_config.oauth_account?.display_name?.trim() || 'User';
+  const userInitial = (displayName[0] || '?').toUpperCase();
 
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const shortcutHint = isMac ? '⌘K' : 'Ctrl+K';
@@ -153,9 +155,9 @@ export function Rail({ active, projectId }: RailProps) {
           width: 26, height: 26, borderRadius: '50%', background: 'var(--cc-orange-wash)',
           color: 'var(--cc-orange-deep)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', fontSize: 11, fontWeight: 600,
-        }}>M</div>
+        }}>{userInitial}</div>
         <div style={{ flex: 1, fontSize: 11.5, color: 'var(--cc-ink-soft)', overflow: 'hidden' }}>
-          <div>micky</div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
           <div className="mono" style={{ color: 'var(--cc-muted)', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {cliVersion || 'v?'}
           </div>

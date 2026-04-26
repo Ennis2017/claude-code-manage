@@ -35,15 +35,20 @@ Claude Code 的所有配置都是散落的文件 —— `settings.json`、`CLAUD
 
 ## 截图
 
-<!-- 截图请放到 docs/screenshots/ 下 -->
-<p align="center"><i>截图待补 — 放置后请替换：</i></p>
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="820" />
+  <br/><sub><b>Dashboard</b> — 用户级与项目级配置一站式概览</sub>
+</p>
 
-```
-docs/screenshots/
-├── dashboard.png       # 主面板
-├── settings.png        # settings.json 编辑
-└── mcp.png             # MCP 可视化编辑
-```
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="settings.json 编辑" width="820" />
+  <br/><sub><b>settings.json</b> — Monaco 内嵌编辑 + Schema 校验 + mtime 冲突检测</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/mcps.png" alt="MCP 可视化编辑" width="820" />
+  <br/><sub><b>MCP</b> — <code>.mcp.json</code> 三视图：介绍 / 表单 / 源码</sub>
+</p>
 
 ## 主要功能
 

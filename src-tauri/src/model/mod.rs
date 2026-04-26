@@ -18,6 +18,12 @@ pub struct UserConfig {
     pub agents: Vec<AgentFile>,
     pub rules: Vec<RuleFile>,
     pub mcp: UserMcpInfo,
+    pub oauth_account: Option<OauthAccount>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OauthAccount {
+    pub display_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
