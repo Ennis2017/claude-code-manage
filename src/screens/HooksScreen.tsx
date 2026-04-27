@@ -3,7 +3,8 @@ import { Rail } from '../components/Rail';
 import { Topbar } from '../components/Topbar';
 import { useAppStore } from '../store/app-store';
 import { useConfigStore } from '../store/config-store';
-import { writeJsonFile, revealInFinder, detectExternalChange } from '../lib/fs-bridge';
+import { writeJsonFile, revealInFinder, detectExternalChange, listHookFiles, HookFileEntry } from '../lib/fs-bridge';
+import { useWorkspaceStore } from '../store/workspace-store';
 import {
   HOOK_EVENTS, HOOK_EVENT_DESC, SUPPORTS_MATCHER,
   HookEvent, HookGroup, HookCommand, HooksConfig,
@@ -13,7 +14,7 @@ import {
 type RailKey = 'user' | 'projects';
 
 interface Props {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: RailKey;
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
@@ -22,12 +23,16 @@ interface Props {
   settingsRaw: Record<string, unknown>;
   initialMtime: string;
   sizeBytes: number;
+  /** 嵌入到 Workspace tab 时为 true：仅渲染右侧第三列内容，不包 Rail/sidebar */
+  embedded?: boolean;
 }
 
 export function HooksScreen(props: Props) {
-  const { sidebar, railKey, railProjectId, crumbs, scopeChip, filePath, settingsRaw, initialMtime, sizeBytes } = props;
+  const { sidebar, railKey, railProjectId, crumbs, scopeChip, filePath, settingsRaw, initialMtime, sizeBytes, embedded } = props;
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
+  // sh "显示" 按钮对应的工作区 scope：用户级或某个项目
+  const scopeId = railKey === 'user' ? 'user' : (railProjectId || 'user');
 
   const initialHooks = parseHooks(settingsRaw.hooks);
   const [editing, setEditing] = useState(false);
@@ -35,6 +40,7 @@ export function HooksScreen(props: Props) {
   const [baseline, setBaseline] = useState<HooksConfig>(initialHooks);
   const [editorMtime, setEditorMtime] = useState(initialMtime);
   const [saving, setSaving] = useState(false);
+  const [hookFiles, setHookFiles] = useState<HookFileEntry[]>([]);
 
   useEffect(() => {
     if (!editing) {
@@ -44,6 +50,12 @@ export function HooksScreen(props: Props) {
       setEditorMtime(initialMtime);
     }
   }, [settingsRaw, initialMtime, editing]);
+
+  // 仅用户级展示 hooks 文件夹（项目级没有这个目录约定）
+  useEffect(() => {
+    if (railKey !== 'user') return;
+    listHookFiles().then(setHookFiles).catch(() => setHookFiles([]));
+  }, [railKey, initialMtime]);
 
   const dirty = editing && JSON.stringify(draft) !== JSON.stringify(baseline);
   const view = editing ? draft : initialHooks;
@@ -102,11 +114,8 @@ export function HooksScreen(props: Props) {
     return sum + groups.reduce((s, g) => s + g.hooks.length, 0);
   }, 0);
 
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
-      <Rail active={railKey} projectId={railProjectId} />
-      {sidebar}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden' }}>
+  const inner = (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden', minWidth: 0, minHeight: 0 }}>
         {editing ? (
           <div style={{ height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF4EC', borderBottom: '1px solid #EDD6C5', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -149,9 +158,19 @@ export function HooksScreen(props: Props) {
               <span className="mono">{filePath}</span>
               <span>· {totalHooks} 个 hook · 修改于 {editorMtime || '—'} · {(sizeBytes / 1024).toFixed(1)} KB</span>
             </div>
+            <p style={{ fontSize: 12.5, color: 'var(--cc-ink-soft)', marginTop: 10, lineHeight: 1.65, maxWidth: 760 }}>
+              Hooks 是 Claude Code 在生命周期事件（如工具调用前后、会话结束）自动执行的命令，
+              在 <span className="mono" style={{ color: 'var(--cc-ink)' }}>settings.json</span> 的
+              <span className="mono" style={{ color: 'var(--cc-ink)' }}> hooks </span>字段中按事件类型注册。
+              脚本通常放在 <span className="mono" style={{ color: 'var(--cc-ink)' }}>~/.claude/hooks/</span> 目录里，
+              <strong style={{ color: 'var(--cc-orange-deep)' }}>但只有被 settings.json 显式引用的脚本才会被触发</strong>。
+            </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {railKey === 'user' && hookFiles.length > 0 && (
+              <UnreferencedHooksCard files={hookFiles} hooks={view} scopeId={scopeId} />
+            )}
             {HOOK_EVENTS.map(ev => (
               <EventCard
                 key={ev}
@@ -159,17 +178,29 @@ export function HooksScreen(props: Props) {
                 groups={view[ev] || []}
                 editing={editing}
                 onChange={(g) => updateEvent(ev, g)}
+                hookFiles={hookFiles}
+                scopeId={scopeId}
               />
             ))}
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  if (embedded) return inner;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
+      <Rail active={railKey} projectId={railProjectId} />
+      {sidebar}
+      {inner}
     </div>
   );
 }
 
-function EventCard({ event, groups, editing, onChange }: {
+function EventCard({ event, groups, editing, onChange, hookFiles, scopeId }: {
   event: HookEvent; groups: HookGroup[]; editing: boolean; onChange: (g: HookGroup[]) => void;
+  hookFiles: HookFileEntry[];
+  scopeId: string;
 }) {
   const tone = eventTone(event);
   const supportsMatcher = SUPPORTS_MATCHER[event];
@@ -221,6 +252,8 @@ function EventCard({ event, groups, editing, onChange }: {
               supportsMatcher={supportsMatcher}
               onChange={(next) => updateGroup(i, next)}
               onRemove={() => removeGroup(i)}
+              hookFiles={hookFiles}
+              scopeId={scopeId}
             />
           ))}
         </div>
@@ -229,9 +262,11 @@ function EventCard({ event, groups, editing, onChange }: {
   );
 }
 
-function GroupCard({ group, editing, supportsMatcher, onChange, onRemove }: {
+function GroupCard({ group, editing, supportsMatcher, onChange, onRemove, hookFiles, scopeId }: {
   group: HookGroup; editing: boolean; supportsMatcher: boolean;
   onChange: (g: HookGroup) => void; onRemove: () => void;
+  hookFiles: HookFileEntry[];
+  scopeId: string;
 }) {
   const updateHook = (i: number, h: HookCommand) => {
     onChange({ ...group, hooks: group.hooks.map((it, idx) => idx === i ? h : it) });
@@ -283,6 +318,8 @@ function GroupCard({ group, editing, supportsMatcher, onChange, onRemove }: {
             editing={editing}
             onChange={(next) => updateHook(i, next)}
             onRemove={() => removeHook(i)}
+            hookFiles={hookFiles}
+            scopeId={scopeId}
           />
         ))}
         {editing && (
@@ -293,10 +330,15 @@ function GroupCard({ group, editing, supportsMatcher, onChange, onRemove }: {
   );
 }
 
-function HookRow({ hook, editing, onChange, onRemove }: {
+function HookRow({ hook, editing, onChange, onRemove, hookFiles, scopeId }: {
   hook: HookCommand; editing: boolean;
   onChange: (h: HookCommand) => void; onRemove: () => void;
+  hookFiles: HookFileEntry[];
+  scopeId: string;
 }) {
+  const openTab = useWorkspaceStore(s => s.openTab);
+  // 命令字符串里若引用了 hooks 文件夹下的某个脚本，提供"显示"快捷入口
+  const matchedFile = hookFiles.find(f => hook.command.includes(f.name));
   return (
     <div style={{
       background: 'var(--cc-bg-raised)', border: '1px solid var(--cc-line)',
@@ -322,6 +364,13 @@ function HookRow({ hook, editing, onChange, onRemove }: {
             flex: 1, fontSize: 12, color: 'var(--cc-ink-soft)', whiteSpace: 'pre-wrap',
             wordBreak: 'break-all', margin: 0, lineHeight: 1.55,
           }}>{hook.command || <span style={{ color: 'var(--cc-muted-soft)' }}>（空）</span>}</pre>
+        )}
+        {!editing && matchedFile && (
+          <button
+            className="cc-btn ghost"
+            style={{ height: 22, fontSize: 11, flexShrink: 0 }}
+            onClick={() => openTab(scopeId, { kind: 'file', path: matchedFile.source_path, name: matchedFile.name, language: 'shell' })}
+          >显示</button>
         )}
         {editing && (
           <button onClick={onRemove} title="删除" style={{
@@ -352,6 +401,75 @@ function HookRow({ hook, editing, onChange, onRemove }: {
           <span style={{ fontSize: 11, color: 'var(--cc-muted)' }}>秒</span>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 收集所有事件中出现过的 command 字符串，用来判定脚本文件是否被 settings.json 引用 */
+function collectAllCommands(hooks: HooksConfig): string[] {
+  const out: string[] = [];
+  for (const ev of HOOK_EVENTS) {
+    const groups = hooks[ev] || [];
+    for (const g of groups) for (const h of g.hooks) out.push(h.command || '');
+  }
+  return out;
+}
+
+function UnreferencedHooksCard({ files, hooks, scopeId }: {
+  files: HookFileEntry[]; hooks: HooksConfig; scopeId: string;
+}) {
+  const openTab = useWorkspaceStore(s => s.openTab);
+  const allCommands = collectAllCommands(hooks);
+  // 命令字符串里出现脚本文件名（如 prettier-format.sh）即视为已引用
+  const orphans = files.filter(f => !allCommands.some(cmd => cmd.includes(f.name)));
+
+  if (orphans.length === 0) return null;
+
+  const onShow = (file: HookFileEntry) => {
+    openTab(scopeId, { kind: 'file', path: file.source_path, name: file.name, language: 'shell' });
+  };
+
+  return (
+    <div style={{
+      background: 'var(--cc-bg-raised)', border: '1px solid var(--cc-line)',
+      borderRadius: 12, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '14px 18px', borderBottom: '1px solid var(--cc-line)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span className="cc-chip orange" style={{ height: 22, fontSize: 11.5 }}>未引用脚本</span>
+          <span style={{ fontSize: 11.5, color: 'var(--cc-muted)' }}>
+            存在于 ~/.claude/hooks/ 但未被 settings.json 引用 · 不会被触发，可安全删除
+          </span>
+        </div>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--cc-muted-soft)' }}>{orphans.length}</span>
+      </div>
+
+      <div style={{ padding: '12px 18px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {orphans.map(f => (
+          <div
+            key={f.source_path}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '8px 12px', borderRadius: 8,
+              background: 'var(--cc-bg)', border: '1px solid var(--cc-line)',
+            }}
+          >
+            <span className="mono" style={{ fontSize: 12, color: 'var(--cc-ink-soft)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {f.name}
+            </span>
+            <span style={{ fontSize: 10.5, color: 'var(--cc-muted-soft)' }}>{(f.size_bytes / 1024).toFixed(1)} KB</span>
+            <span className="mono" style={{ fontSize: 10.5, color: 'var(--cc-muted-soft)' }}>{f.mtime || '—'}</span>
+            <button
+              className="cc-btn ghost"
+              style={{ height: 22, fontSize: 11 }}
+              onClick={() => onShow(f)}
+            >显示</button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -13,19 +13,20 @@ import { validateMcpJsonText } from '../lib/mcp-schema';
 type RailKey = 'user' | 'projects';
 
 interface Props {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: RailKey;
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
   title: string;
   scopeChip: { label: string; tone: 'orange' | 'leaf' | 'sky' | 'plum' };
   filePath: string;
+  embedded?: boolean;
 }
 
 type Tab = 'intro' | 'visual' | 'source';
 
 export function McpEditorScreen(props: Props) {
-  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath } = props;
+  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, embedded } = props;
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
 
@@ -116,10 +117,7 @@ export function McpEditorScreen(props: Props) {
     </div>
   );
 
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
-      <Rail active={railKey} projectId={railProjectId} />
-      {sidebar}
+  const inner = (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden' }}>
         {editing ? (
           <div style={{ height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF4EC', borderBottom: '1px solid #EDD6C5', flexShrink: 0 }}>
@@ -195,6 +193,14 @@ export function McpEditorScreen(props: Props) {
           )}
         </div>
       </div>
+  );
+
+  if (embedded) return inner;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
+      <Rail active={railKey} projectId={railProjectId} />
+      {sidebar}
+      {inner}
     </div>
   );
 }

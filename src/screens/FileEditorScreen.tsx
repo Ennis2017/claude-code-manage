@@ -19,7 +19,7 @@ export interface ValidationResult {
 }
 
 interface FileEditorScreenProps {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: RailKey;
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
@@ -32,12 +32,13 @@ interface FileEditorScreenProps {
   sizeBytes: number;
   extraActions?: ReactNode;
   validate?: (text: string) => ValidationResult;
+  embedded?: boolean;
 }
 
 type ViewMode = 'edit' | 'preview' | 'split';
 
 export function FileEditorScreen(props: FileEditorScreenProps) {
-  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialContent, initialMtime, language, sizeBytes, extraActions, validate } = props;
+  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialContent, initialMtime, language, sizeBytes, extraActions, validate, embedded } = props;
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
 
@@ -45,7 +46,7 @@ export function FileEditorScreen(props: FileEditorScreenProps) {
   const [draft, setDraft] = useState(initialContent);
   const [baseline, setBaseline] = useState(initialContent);
   const [editorMtime, setEditorMtime] = useState(initialMtime);
-  const [view, setView] = useState<ViewMode>(language === 'markdown' ? 'split' : 'edit');
+  const [view, setView] = useState<ViewMode>(language === 'markdown' ? 'preview' : 'edit');
   const [saving, setSaving] = useState(false);
   const [showConflict, setShowConflict] = useState(false);
   const [diskMtime, setDiskMtime] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export function FileEditorScreen(props: FileEditorScreenProps) {
   const cancelEdit = () => {
     setEditing(false);
     setDraft(baseline);
-    if (language === 'markdown') setView('split');
+    if (language === 'markdown') setView('preview');
   };
 
   const doSave = async (force = false) => {
@@ -102,7 +103,7 @@ export function FileEditorScreen(props: FileEditorScreenProps) {
       setEditing(false);
       setShowConflict(false);
       toast_msg(`已保存 · ${title}`, 'success');
-      if (language === 'markdown') setView('split');
+      if (language === 'markdown') setView('preview');
       scanAll();
     } catch (e) {
       toast_msg(`保存失败：${String(e)}`, 'error');
@@ -115,11 +116,8 @@ export function FileEditorScreen(props: FileEditorScreenProps) {
     try { await revealInFinder(filePath); } catch (e) { toast_msg(`无法打开 Finder：${String(e)}`, 'error'); }
   };
 
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
-      <Rail active={railKey} projectId={railProjectId} />
-      {sidebar}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden', position: 'relative' }}>
+  const inner = (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden', position: 'relative', minWidth: 0, minHeight: 0 }}>
         {editing ? (
           <div style={{ height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF4EC', borderBottom: '1px solid #EDD6C5', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -195,7 +193,15 @@ export function FileEditorScreen(props: FileEditorScreenProps) {
             onOverwrite={() => doSave(true)}
           />
         )}
-      </div>
+    </div>
+  );
+
+  if (embedded) return inner;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
+      <Rail active={railKey} projectId={railProjectId} />
+      {sidebar}
+      {inner}
     </div>
   );
 }

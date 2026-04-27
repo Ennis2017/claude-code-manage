@@ -8,7 +8,7 @@ import { ConfirmDeleteDialog } from '../components/NewEntryDialog';
 import { deletePath, listSkillFiles, readTextFile, SkillFileEntry, revealInFinder } from '../lib/fs-bridge';
 
 interface Props {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: 'user' | 'projects';
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
@@ -16,10 +16,11 @@ interface Props {
   skillDir: string;
   scopeChip: { label: string; tone: 'orange' | 'leaf' | 'sky' | 'plum' };
   onDeleted: () => void;
+  embedded?: boolean;
 }
 
 export function SkillDetailScreen(props: Props) {
-  const { sidebar, railKey, railProjectId, crumbs, title, skillDir, scopeChip, onDeleted } = props;
+  const { sidebar, railKey, railProjectId, crumbs, title, skillDir, scopeChip, onDeleted, embedded } = props;
   const { toast_msg } = useAppStore();
   const { scanAll, snapshot } = useConfigStore();
   const [files, setFiles] = useState<SkillFileEntry[] | null>(null);
@@ -68,6 +69,7 @@ export function SkillDetailScreen(props: Props) {
         initialMtime={selectedFile.mtime}
         sizeBytes={selectedFile.size_bytes}
         language={lang}
+        embedded={embedded}
         onBack={() => setSelectedFile(null)}
       />
     );
@@ -75,11 +77,8 @@ export function SkillDetailScreen(props: Props) {
 
   const total = files?.length ?? 0;
 
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
-      <Rail active={railKey} projectId={railProjectId} />
-      {sidebar}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden' }}>
+  const inner = (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden', minWidth: 0, minHeight: 0 }}>
         <Topbar
           crumbs={crumbs}
           right={
@@ -146,7 +145,6 @@ export function SkillDetailScreen(props: Props) {
             </div>
           )}
         </div>
-      </div>
       {confirm && (
         <ConfirmDeleteDialog
           title={`删除 Skill ${title}？`}
@@ -164,10 +162,19 @@ export function SkillDetailScreen(props: Props) {
       )}
     </div>
   );
+
+  if (embedded) return inner;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
+      <Rail active={railKey} projectId={railProjectId} />
+      {sidebar}
+      {inner}
+    </div>
+  );
 }
 
 function FileEditorScreenWrapped(props: {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: 'user' | 'projects';
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
@@ -178,6 +185,7 @@ function FileEditorScreenWrapped(props: {
   sizeBytes: number;
   language: 'markdown' | 'json';
   onBack: () => void;
+  embedded?: boolean;
 }) {
   const [content, setContent] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -232,6 +240,7 @@ function FileEditorScreenWrapped(props: {
       initialMtime={props.initialMtime}
       language={props.language}
       sizeBytes={props.sizeBytes}
+      embedded={props.embedded}
     />
   );
 }

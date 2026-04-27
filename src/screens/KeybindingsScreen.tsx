@@ -1,12 +1,10 @@
 import { ReactNode } from 'react';
-import { useAppStore } from '../store/app-store';
 import { useConfigStore } from '../store/config-store';
 import { FileEditorScreen } from './FileEditorScreen';
 
-interface Props { sidebar: ReactNode; }
+interface Props { sidebar?: ReactNode; embedded?: boolean }
 
-export function KeybindingsScreen({ sidebar }: Props) {
-  const { go } = useAppStore();
+export function KeybindingsScreen({ sidebar, embedded }: Props) {
   const { snapshot } = useConfigStore();
   const file = snapshot?.user_config.keybindings;
   const filePath = file?.source_path || '~/.claude/keybindings.json';
@@ -16,10 +14,11 @@ export function KeybindingsScreen({ sidebar }: Props) {
 
   return (
     <FileEditorScreen
+      embedded={embedded}
       sidebar={sidebar}
       railKey="user"
       crumbs={[
-        { label: '全局配置', onClick: () => go({ name: 'global', screen: 'overview' }) },
+        { label: '全局配置' },
         { label: 'keybindings.json' },
       ]}
       title="keybindings.json"

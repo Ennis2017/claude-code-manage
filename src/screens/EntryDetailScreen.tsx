@@ -7,7 +7,7 @@ import { ConfirmDeleteDialog } from '../components/NewEntryDialog';
 import { deletePath, readTextFile } from '../lib/fs-bridge';
 
 interface Props {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: 'user' | 'projects';
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
@@ -17,10 +17,11 @@ interface Props {
   initialMtime: string;
   sizeBytes: number;
   onDeleted: () => void;
+  embedded?: boolean;
 }
 
 export function EntryDetailScreen(props: Props) {
-  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialMtime, sizeBytes, onDeleted } = props;
+  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialMtime, sizeBytes, onDeleted, embedded } = props;
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
   const [confirm, setConfirm] = useState(false);
@@ -38,25 +39,33 @@ export function EntryDetailScreen(props: Props) {
   }, [filePath]);
 
   if (loadError) {
+    const msg = (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8543A', fontSize: 13 }}>
+        读取文件失败：{loadError}
+      </div>
+    );
+    if (embedded) return msg;
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex' }}>
         <Rail active={railKey} projectId={railProjectId} />
         {sidebar}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8543A', fontSize: 13 }}>
-          读取文件失败：{loadError}
-        </div>
+        {msg}
       </div>
     );
   }
 
   if (content === null) {
+    const msg = (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cc-muted)', fontSize: 13 }}>
+        加载中…
+      </div>
+    );
+    if (embedded) return msg;
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex' }}>
         <Rail active={railKey} projectId={railProjectId} />
         {sidebar}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cc-muted)', fontSize: 13 }}>
-          加载中…
-        </div>
+        {msg}
       </div>
     );
   }
@@ -75,6 +84,7 @@ export function EntryDetailScreen(props: Props) {
         initialMtime={initialMtime}
         language="markdown"
         sizeBytes={sizeBytes}
+        embedded={embedded}
         extraActions={
           <button
             className="cc-btn ghost"

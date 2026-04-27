@@ -5,10 +5,10 @@ import { FileEditorScreen } from './FileEditorScreen';
 import { SettingsFormScreen } from './SettingsFormScreen';
 import { validateSettingsJsonText } from '../lib/settings-schema';
 
-interface Props { sidebar: ReactNode; }
+interface Props { sidebar?: ReactNode; embedded?: boolean }
 
-export function SettingsScreen({ sidebar }: Props) {
-  const { go, settingsView, set } = useAppStore();
+export function SettingsScreen({ sidebar, embedded }: Props) {
+  const { settingsView, set } = useAppStore();
   const { snapshot } = useConfigStore();
   const settingsFile = snapshot?.user_config.settings;
 
@@ -28,10 +28,11 @@ export function SettingsScreen({ sidebar }: Props) {
   if (settingsView === 'form') {
     return (
       <SettingsFormScreen
+        embedded={embedded}
         sidebar={sidebar}
         railKey="user"
         crumbs={[
-          { label: '全局配置', onClick: () => go({ name: 'global', screen: 'overview' }) },
+          { label: '全局配置' },
           { label: 'settings.json' },
         ]}
         title="settings.json"
@@ -47,10 +48,11 @@ export function SettingsScreen({ sidebar }: Props) {
 
   return (
     <FileEditorScreen
+      embedded={embedded}
       sidebar={sidebar}
       railKey="user"
       crumbs={[
-        { label: '全局配置', onClick: () => go({ name: 'global', screen: 'overview' }) },
+        { label: '全局配置' },
         { label: 'settings.json' },
       ]}
       title="settings.json"

@@ -3,12 +3,21 @@ import { useAppStore } from '../store/app-store';
 import { useConfigStore } from '../store/config-store';
 import { Rail } from '../components/Rail';
 import { Topbar } from '../components/Topbar';
-import { SAMPLE_PROJECTS, USER_COMMANDS, USER_SKILLS, USER_AGENTS } from '../data/mock';
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 function formatToday(): string {
   const d = new Date();
   return `${WEEKDAYS[d.getDay()]} · ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+}
+
+// 将后端返回的 UTC 时间戳（"YYYY-MM-DD HH:mm:ss"）格式化为北京时间 HH:mm
+function formatBeijingTime(utc: string): string {
+  if (!utc) return '';
+  // 兼容两种格式：ISO（带 T 与 Z）或 "YYYY-MM-DD HH:mm:ss"（裸 UTC 时间）
+  const iso = /[TZ]/.test(utc) ? utc : utc.replace(' ', 'T') + 'Z';
+  const t = new Date(iso);
+  if (isNaN(t.getTime())) return utc;
+  return t.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' });
 }
 
 function relativeTime(mtime: string): string {
@@ -26,21 +35,6 @@ function relativeTime(mtime: string): string {
   return mtime;
 }
 
-function findLatestEdit(snapshot: ReturnType<typeof useConfigStore.getState>['snapshot']): { mtime: string; label: string } | null {
-  if (!snapshot) return null;
-  const candidates: { mtime: string; label: string }[] = [];
-  const uc = snapshot.user_config;
-  if (uc.settings) candidates.push({ mtime: uc.settings.mtime, label: '~/.claude/settings.json' });
-  if (uc.memory) candidates.push({ mtime: uc.memory.mtime, label: '~/.claude/CLAUDE.md' });
-  if (uc.keybindings) candidates.push({ mtime: uc.keybindings.mtime, label: '~/.claude/keybindings.json' });
-  for (const p of snapshot.projects) {
-    if (p.settings) candidates.push({ mtime: p.settings.mtime, label: `${p.name}/.claude/settings.json` });
-    if (p.memory) candidates.push({ mtime: p.memory.mtime, label: `${p.name}/CLAUDE.md` });
-  }
-  candidates.sort((a, b) => b.mtime.localeCompare(a.mtime));
-  return candidates[0] || null;
-}
-
 export function Dashboard() {
   const { go, toast_msg } = useAppStore();
   const { snapshot, scanAll, addProject } = useConfigStore();
@@ -53,26 +47,23 @@ export function Dashboard() {
     }
   };
 
-  // Use real data when available, fall back to mock
-  const projects = snapshot?.projects.length
-    ? snapshot.projects.map(p => ({
-        id: p.id, name: p.name, alias: p.name,
-        path: p.path, added: p.added_at,
-        configCount: (p.settings ? 1 : 0) + (p.local_settings ? 1 : 0) + (p.memory ? 1 : 0) + p.commands.length + p.skills.length + p.agents.length,
-        hasMcp: p.has_mcp, hasLocal: !!p.local_settings,
-        commands: p.commands.length, skills: p.skills.length, agents: p.agents.length,
-        memory: !!p.memory, lastEdit: p.settings?.mtime || p.memory?.mtime || '',
-        mtime: p.settings?.mtime || '',
-      }))
-    : SAMPLE_PROJECTS;
+  const projects = (snapshot?.projects || []).map(p => ({
+    id: p.id, name: p.name, alias: p.name,
+    path: p.path, added: p.added_at,
+    configCount: (p.settings ? 1 : 0) + (p.local_settings ? 1 : 0) + (p.memory ? 1 : 0) + p.commands.length + p.skills.length + p.agents.length,
+    hasMcp: p.has_mcp, hasLocal: !!p.local_settings,
+    commands: p.commands.length, skills: p.skills.length, agents: p.agents.length,
+    memory: !!p.memory, lastEdit: relativeTime(p.settings?.mtime || p.memory?.mtime || ''),
+    mtime: p.settings?.mtime || '',
+  }));
 
-  const userCommands = snapshot?.user_config.commands.length ? snapshot.user_config.commands : USER_COMMANDS;
-  const userSkills = snapshot?.user_config.skills.length ? snapshot.user_config.skills : USER_SKILLS;
-  const userAgents = snapshot?.user_config.agents.length ? snapshot.user_config.agents : USER_AGENTS;
+  const userCommands = snapshot?.user_config.commands || [];
+  const userSkills = snapshot?.user_config.skills || [];
+  const userAgents = snapshot?.user_config.agents || [];
   const cliVersion = snapshot?.claude_code_version || '—';
-  const totalFiles = (snapshot
+  const totalFiles = snapshot
     ? (snapshot.user_config.settings ? 1 : 0) + (snapshot.user_config.memory ? 1 : 0) + snapshot.user_config.commands.length + snapshot.user_config.skills.length + snapshot.user_config.agents.length + snapshot.projects.reduce((s, p) => s + p.commands.length + p.skills.length + p.agents.length + (p.settings ? 1 : 0) + (p.memory ? 1 : 0), 0)
-    : 31);
+    : 0;
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex' }}>
@@ -98,12 +89,12 @@ export function Dashboard() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--cc-muted)' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: snapshot ? 'var(--cc-leaf)' : 'var(--cc-muted-soft)' }} />
-              <span>{snapshot ? `已扫描 · ${snapshot.scanned_at.slice(11, 16)} UTC` : '尚未扫描'}</span>
+              <span>{snapshot ? `已扫描 · ${formatBeijingTime(snapshot.scanned_at)}` : '尚未扫描'}</span>
             </div>
           </div>
 
           {/* Hero stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr 1fr', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 14, marginBottom: 24 }}>
             <div
               onClick={() => go({ name: 'global', screen: 'overview' })}
               style={{
@@ -122,13 +113,9 @@ export function Dashboard() {
               <div style={{ position: 'absolute', right: -30, top: -30, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
             </div>
 
-            {(() => {
-              const latest = findLatestEdit(snapshot);
-              return [
-                { l: 'CLI 版本', v: cliVersion, s: 'claude --version', c: 'var(--cc-leaf)', onClick: undefined },
-                { l: '最近编辑', v: latest ? relativeTime(latest.mtime) : '—', s: latest?.label || '—', c: 'var(--cc-ink-soft)', onClick: undefined },
-              ];
-            })().map((x, i) => (
+            {[
+              { l: 'CLI 版本', v: cliVersion, s: 'claude --version', c: 'var(--cc-leaf)', onClick: undefined as (() => void) | undefined },
+            ].map((x, i) => (
               <div
                 key={i}
                 onClick={x.onClick}
@@ -182,6 +169,8 @@ export function Dashboard() {
           </div>
 
           {/* Projects */}
+          {projects.length > 0 && (
+          <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
             <h2 style={{ fontSize: 15, fontWeight: 600 }}>项目 <span style={{ color: 'var(--cc-muted-soft)', fontWeight: 400, marginLeft: 6 }}>· {projects.length}</span></h2>
           </div>
@@ -226,6 +215,8 @@ export function Dashboard() {
               </div>
             ))}
           </div>
+          </>
+          )}
 
         </div>
       </div>

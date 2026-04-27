@@ -9,7 +9,7 @@ import { writeJsonFile, revealInFinder, detectExternalChange } from '../lib/fs-b
 type RailKey = 'user' | 'projects';
 
 interface Props {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   railKey: RailKey;
   railProjectId?: string;
   crumbs: { label: string; onClick?: () => void }[];
@@ -20,10 +20,11 @@ interface Props {
   initialMtime: string;
   sizeBytes: number;
   viewToggle: ReactNode;
+  embedded?: boolean;
 }
 
 export function SettingsFormScreen(props: Props) {
-  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialRaw, initialMtime, sizeBytes, viewToggle } = props;
+  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialRaw, initialMtime, sizeBytes, viewToggle, embedded } = props;
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
 
@@ -86,11 +87,8 @@ export function SettingsFormScreen(props: Props) {
     try { await revealInFinder(filePath); } catch (e) { toast_msg(`无法打开 Finder：${String(e)}`, 'error'); }
   };
 
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
-      <Rail active={railKey} projectId={railProjectId} />
-      {sidebar}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden' }}>
+  const inner = (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden', minWidth: 0, minHeight: 0 }}>
         {editing ? (
           <div style={{ height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF4EC', borderBottom: '1px solid #EDD6C5', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -143,7 +141,15 @@ export function SettingsFormScreen(props: Props) {
             onChange={updateField}
           />
         </div>
-      </div>
+    </div>
+  );
+
+  if (embedded) return inner;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
+      <Rail active={railKey} projectId={railProjectId} />
+      {sidebar}
+      {inner}
     </div>
   );
 }

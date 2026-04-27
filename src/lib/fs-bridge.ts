@@ -79,6 +79,17 @@ export async function listSkillFiles(path: string): Promise<SkillFileEntry[]> {
   return invoke<SkillFileEntry[]>('list_skill_files', { path });
 }
 
+export interface HookFileEntry {
+  name: string;
+  source_path: string;
+  size_bytes: number;
+  mtime: string;
+}
+
+export async function listHookFiles(): Promise<HookFileEntry[]> {
+  return invoke<HookFileEntry[]>('list_hook_files');
+}
+
 export async function readUserMcpServers(): Promise<ReadMeta> {
   return invoke<ReadMeta>('read_user_mcp_servers');
 }

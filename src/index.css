@@ -59,6 +59,11 @@ body {
 .rail-item:hover { background: rgba(217,119,87,0.08) !important; }
 .inner-item:hover { background: rgba(217,119,87,0.06) !important; }
 
+/* Workspace tabs */
+.ccm-tab[data-active="0"]:hover { background: rgba(255,255,255,0.55) !important; }
+.ccm-tab:hover .ccm-tab-close { opacity: 0.7 !important; }
+.ccm-tab .ccm-tab-close:hover { background: var(--cc-line); opacity: 1 !important; }
+
 /* Loading pulse */
 @keyframes cc-pulse {
   0%, 100% { opacity: 1; }

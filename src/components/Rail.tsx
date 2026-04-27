@@ -10,7 +10,7 @@ interface RailProps {
 }
 
 export function Rail({ active, projectId }: RailProps) {
-  const { go, toast_msg } = useAppStore();
+  const { go, toast_msg, railCollapsed, toggleRail } = useAppStore();
   const { snapshot, addProject } = useConfigStore();
 
   const pickAndAddProject = async () => {
@@ -28,34 +28,114 @@ export function Rail({ active, projectId }: RailProps) {
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const shortcutHint = isMac ? '⌘K' : 'Ctrl+K';
 
-  const items = [
-    { id: 'dashboard', label: 'Dashboard', onClick: () => go({ name: 'dashboard' }) },
-    { id: 'user', label: '全局配置', onClick: () => go({ name: 'global', screen: 'overview' }) },
-    {
-      id: 'projects', label: '项目', count: projects.length,
-      onClick: () => projects.length > 0 ? go({ name: 'project', id: projects[0].id, screen: 'overview' }) : toast_msg('暂无项目，请先添加'),
-    },
-    { id: 'docs', label: '命令百科', onClick: () => go({ name: 'catalog' }) },
+  type RailItem = { id: ActiveSection; label: string; icon: string; onClick: () => void };
+  const items: RailItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: '◆', onClick: () => go({ name: 'dashboard' }) },
+    { id: 'user', label: '全局配置', icon: '⚙', onClick: () => go({ name: 'global', screen: 'overview' }) },
+    { id: 'docs', label: '命令百科', icon: '☰', onClick: () => go({ name: 'catalog' }) },
   ];
+
+  if (railCollapsed) {
+    return (
+      <aside style={{
+        width: 52, background: 'var(--cc-bg-sunk)', borderRight: '1px solid var(--cc-line)',
+        display: 'flex', flexDirection: 'column', flexShrink: 0,
+      }}>
+        <div style={{ padding: '14px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <img
+            src="/icon.png"
+            alt="Claude Code Manage"
+            onClick={() => go({ name: 'dashboard' })}
+            style={{ width: 26, height: 26, borderRadius: 7, cursor: 'pointer', display: 'block' }}
+          />
+          <button
+            onClick={toggleRail}
+            title="展开侧栏"
+            style={collapseBtnStyle}
+          >»</button>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--cc-line)', margin: '4px 10px 8px' }} />
+
+        <div style={{ padding: '0 6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div
+            onClick={() => window.dispatchEvent(new CustomEvent('ccm:open-palette'))}
+            title={`搜索 (${shortcutHint})`}
+            className="rail-item"
+            style={collapsedItemStyle(false)}
+          >⌕</div>
+          {items.map(it => (
+            <div
+              key={it.id}
+              onClick={it.onClick}
+              title={it.label}
+              className="rail-item"
+              style={collapsedItemStyle(active === it.id)}
+            >{it.icon}</div>
+          ))}
+        </div>
+
+        <div style={{ height: 1, background: 'var(--cc-line)', margin: '10px 10px' }} />
+
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '0 6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {projects.map(p => {
+            const isA = projectId === p.id;
+            const initial = (p.name[0] || '?').toUpperCase();
+            return (
+              <div
+                key={p.id}
+                onClick={() => go({ name: 'project', id: p.id, screen: 'overview' })}
+                title={p.name}
+                className="rail-item"
+                style={{
+                  ...collapsedItemStyle(isA),
+                  fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, fontSize: 11,
+                }}
+              >{initial}</div>
+            );
+          })}
+          <div
+            onClick={pickAndAddProject}
+            title="添加项目"
+            className="rail-item"
+            style={{ ...collapsedItemStyle(false), color: 'var(--cc-orange-deep)' }}
+          >+</div>
+        </nav>
+
+        <div
+          title={`${displayName} · ${cliVersion || 'v?'}`}
+          style={{
+            padding: '12px 0', borderTop: '1px solid var(--cc-line)',
+            display: 'flex', justifyContent: 'center',
+          }}
+        >
+          <div style={{
+            width: 26, height: 26, borderRadius: '50%', background: 'var(--cc-orange-wash)',
+            color: 'var(--cc-orange-deep)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 11, fontWeight: 600,
+          }}>{userInitial}</div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside style={{
       width: 208, background: 'var(--cc-bg-sunk)', borderRight: '1px solid var(--cc-line)',
       display: 'flex', flexDirection: 'column', flexShrink: 0,
     }}>
-      <div
-        onClick={() => go({ name: 'dashboard' })}
-        style={{ padding: '20px 20px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-      >
+      <div style={{ padding: '20px 12px 16px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <img
           src="/icon.png"
           alt="Claude Code Manage"
-          style={{ width: 26, height: 26, borderRadius: 7, display: 'block', flexShrink: 0 }}
+          onClick={() => go({ name: 'dashboard' })}
+          style={{ width: 26, height: 26, borderRadius: 7, display: 'block', flexShrink: 0, cursor: 'pointer' }}
         />
-        <div>
+        <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => go({ name: 'dashboard' })}>
           <div style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: '-0.01em' }}>Claude Code</div>
           <div className="mono" style={{ fontSize: 10, color: 'var(--cc-muted)' }}>配置管理器</div>
         </div>
+        <button onClick={toggleRail} title="折叠侧栏" style={collapseBtnStyle}>«</button>
       </div>
 
       <div style={{ padding: '0 10px 8px' }}>
@@ -91,12 +171,6 @@ export function Rail({ active, projectId }: RailProps) {
               }}
             >
               <span style={{ flex: 1 }}>{it.label}</span>
-              {it.count != null && (
-                <span className="mono" style={{
-                  fontSize: 10.5, color: isActive ? 'var(--cc-orange-deep)' : 'var(--cc-muted-soft)',
-                  opacity: isActive ? 0.7 : 1,
-                }}>{it.count}</span>
-              )}
             </div>
           );
         })}
@@ -165,4 +239,21 @@ export function Rail({ active, projectId }: RailProps) {
       </div>
     </aside>
   );
+}
+
+const collapseBtnStyle: React.CSSProperties = {
+  width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'transparent', border: '1px solid var(--cc-line)', borderRadius: 5,
+  color: 'var(--cc-muted)', fontSize: 12, lineHeight: 1, cursor: 'pointer', padding: 0,
+};
+
+function collapsedItemStyle(active: boolean): React.CSSProperties {
+  return {
+    width: 36, height: 32, borderRadius: 7,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 14, cursor: 'pointer',
+    color: active ? 'var(--cc-orange-deep)' : 'var(--cc-ink-soft)',
+    background: active ? 'var(--cc-orange-wash)' : 'transparent',
+    fontWeight: active ? 600 : 400,
+  };
 }

@@ -10,15 +10,16 @@ import { McpIntro } from './mcp/McpIntro';
 import { validateMcpJsonText } from '../lib/mcp-schema';
 
 interface Props {
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   crumbs: { label: string; onClick?: () => void }[];
+  embedded?: boolean;
 }
 
 type Tab = 'intro' | 'visual' | 'source';
 
 const SCOPE_PATH = '~/.claude.json · mcpServers';
 
-export function UserMcpScreen({ sidebar, crumbs }: Props) {
+export function UserMcpScreen({ sidebar, crumbs, embedded }: Props) {
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
 
@@ -111,11 +112,8 @@ export function UserMcpScreen({ sidebar, crumbs }: Props) {
     </div>
   );
 
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
-      <Rail active="user" />
-      {sidebar}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden' }}>
+  const inner = (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--cc-bg)', overflow: 'hidden', minWidth: 0, minHeight: 0 }}>
         {editing ? (
           <div style={{ height: 52, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF4EC', borderBottom: '1px solid #EDD6C5', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -192,7 +190,15 @@ export function UserMcpScreen({ sidebar, crumbs }: Props) {
             </div>
           )}
         </div>
-      </div>
+    </div>
+  );
+
+  if (embedded) return inner;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative' }}>
+      <Rail active="user" />
+      {sidebar}
+      {inner}
     </div>
   );
 }

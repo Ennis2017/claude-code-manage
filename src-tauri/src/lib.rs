@@ -132,6 +132,11 @@ fn list_skill_files(path: String) -> Result<Vec<fs_write::SkillFileEntry>, Strin
 }
 
 #[tauri::command]
+fn list_hook_files() -> Vec<fs_write::HookFileEntry> {
+    fs_write::list_hook_files()
+}
+
+#[tauri::command]
 fn read_user_mcp_servers() -> Result<fs_write::ReadMeta, String> {
     fs_write::read_user_mcp_servers().map_err(|e| e.to_string())
 }
@@ -209,6 +214,7 @@ pub fn run() {
             read_text_file,
             read_text_file_meta,
             list_skill_files,
+            list_hook_files,
             read_user_mcp_servers,
             write_user_mcp_servers,
             reveal_in_finder,

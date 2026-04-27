@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from './store/app-store';
 import { useConfigStore } from './store/config-store';
+import { useWorkspaceStore } from './store/workspace-store';
 import { Toast } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandPalette } from './components/CommandPalette';
@@ -36,6 +37,13 @@ function AppInner() {
       unlisten.then(fn => fn()).catch(() => {});
     };
   }, []);
+
+  // 路由切换 → 清理非当前项目的 workspace scope（user scope 始终保留）
+  useEffect(() => {
+    const keep: string[] = ['user'];
+    if (route.name === 'project' && route.id) keep.push(route.id);
+    useWorkspaceStore.getState().clearScopesExcept(keep);
+  }, [route.name, route.id]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -314,6 +314,39 @@ fn walk_skill_dir(base: &Path, dir: &Path, out: &mut Vec<SkillFileEntry>) {
     }
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct HookFileEntry {
+    pub name: String,
+    pub source_path: String,
+    pub size_bytes: u64,
+    pub mtime: String,
+}
+
+/// 列出 ~/.claude/hooks/ 下的脚本文件（一层，不递归），用于在 Hooks 页判定哪些脚本未被
+/// settings.json 引用。目录不存在时返回空列表。
+pub fn list_hook_files() -> Vec<HookFileEntry> {
+    let dir = paths::user_claude_dir().join("hooks");
+    let mut out = Vec::new();
+    let Ok(entries) = fs::read_dir(&dir) else { return out };
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if !p.is_file() {
+            continue;
+        }
+        let name = p.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        let size_bytes = fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+        let mtime = read_mtime(&p).unwrap_or_default();
+        out.push(HookFileEntry {
+            name,
+            source_path: p.to_string_lossy().to_string(),
+            size_bytes,
+            mtime,
+        });
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
 /// 读取 ~/.claude.json 中的 mcpServers 段，包装为独立的 `{ "mcpServers": {...} }` JSON。
 /// 这样前端编辑界面只看到 MCP 部分，避免误改其它字段。
 pub fn read_user_mcp_servers() -> Result<ReadMeta, CreateError> {

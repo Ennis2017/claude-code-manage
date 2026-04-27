@@ -3,20 +3,20 @@ import { useAppStore } from '../store/app-store';
 import { useConfigStore } from '../store/config-store';
 import { FileEditorScreen } from './FileEditorScreen';
 
-interface Props { sidebar: ReactNode; }
+interface Props { sidebar?: ReactNode; embedded?: boolean }
 
-export function GlobalMemoryScreen({ sidebar }: Props) {
-  const { go } = useAppStore();
+export function GlobalMemoryScreen({ sidebar, embedded }: Props) {
   const { snapshot } = useConfigStore();
   const file = snapshot?.user_config.memory;
   const filePath = file?.source_path || '~/.claude/CLAUDE.md';
 
   return (
     <FileEditorScreen
+      embedded={embedded}
       sidebar={sidebar}
       railKey="user"
       crumbs={[
-        { label: '全局配置', onClick: () => go({ name: 'global', screen: 'overview' }) },
+        { label: '全局配置' },
         { label: 'CLAUDE.md' },
       ]}
       title="CLAUDE.md"
@@ -34,7 +34,7 @@ interface ProjectMemoryProps extends Props {
   projectId: string;
 }
 
-export function ProjectMemoryScreen({ sidebar, projectId }: ProjectMemoryProps) {
+export function ProjectMemoryScreen({ sidebar, projectId, embedded }: ProjectMemoryProps) {
   const { go } = useAppStore();
   const { snapshot } = useConfigStore();
   const project = snapshot?.projects.find(p => p.id === projectId);
@@ -43,6 +43,7 @@ export function ProjectMemoryScreen({ sidebar, projectId }: ProjectMemoryProps) 
 
   return (
     <FileEditorScreen
+      embedded={embedded}
       sidebar={sidebar}
       railKey="projects"
       railProjectId={projectId}

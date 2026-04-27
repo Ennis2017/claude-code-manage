@@ -1,3 +1,5 @@
+import { useAppStore } from '../store/app-store';
+
 interface SidebarItem {
   id: string;
   label: string;
@@ -20,6 +22,9 @@ interface InnerSidebarProps {
 }
 
 export function InnerSidebar({ sections, activeId, onPick }: InnerSidebarProps) {
+  const innerCollapsed = useAppStore(s => s.innerCollapsed);
+  if (innerCollapsed) return null;
+
   return (
     <aside style={{
       width: 260, background: 'var(--cc-bg-raised)', borderRight: '1px solid var(--cc-line)',
