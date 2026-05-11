@@ -2,7 +2,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useAppStore } from '../store/app-store';
 import { useConfigStore } from '../store/config-store';
 
-type ActiveSection = 'dashboard' | 'user' | 'projects' | 'docs';
+type ActiveSection = 'dashboard' | 'user' | 'projects' | 'docs' | 'plugins';
 
 interface RailProps {
   active: ActiveSection;
@@ -28,10 +28,19 @@ export function Rail({ active, projectId }: RailProps) {
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const shortcutHint = isMac ? '⌘K' : 'Ctrl+K';
 
-  type RailItem = { id: ActiveSection; label: string; icon: string; onClick: () => void };
+  const pluginsCount = snapshot?.plugins?.installed?.length ?? 0;
+
+  type RailItem = { id: ActiveSection; label: string; icon: string; onClick: () => void; badge?: string };
   const items: RailItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '◆', onClick: () => go({ name: 'dashboard' }) },
     { id: 'user', label: '全局配置', icon: '⚙', onClick: () => go({ name: 'global', screen: 'overview' }) },
+    {
+      id: 'plugins',
+      label: 'Plugins',
+      icon: '⊞',
+      badge: pluginsCount > 0 ? String(pluginsCount) : undefined,
+      onClick: () => go({ name: 'plugins' }),
+    },
     { id: 'docs', label: '命令百科', icon: '☰', onClick: () => go({ name: 'catalog' }) },
   ];
 
@@ -171,6 +180,14 @@ export function Rail({ active, projectId }: RailProps) {
               }}
             >
               <span style={{ flex: 1 }}>{it.label}</span>
+              {it.badge && (
+                <span className="mono" style={{
+                  fontSize: 10, color: isActive ? 'var(--cc-orange-deep)' : 'var(--cc-muted)',
+                  background: isActive ? 'transparent' : 'var(--cc-bg-raised)',
+                  padding: '1px 6px', borderRadius: 8, fontWeight: 500,
+                  border: '1px solid var(--cc-line)',
+                }}>{it.badge}</span>
+              )}
             </div>
           );
         })}

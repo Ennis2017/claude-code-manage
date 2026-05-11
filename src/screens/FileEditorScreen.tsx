@@ -33,12 +33,16 @@ interface FileEditorScreenProps {
   extraActions?: ReactNode;
   validate?: (text: string) => ValidationResult;
   embedded?: boolean;
+  /** 只读模式:隐藏编辑按钮(用于 plugin 缓存目录,改了也会被升级覆盖) */
+  readOnly?: boolean;
+  /** readOnly 时显示的提示文案 */
+  readOnlyHint?: string;
 }
 
 type ViewMode = 'edit' | 'preview' | 'split';
 
 export function FileEditorScreen(props: FileEditorScreenProps) {
-  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialContent, initialMtime, language, sizeBytes, extraActions, validate, embedded } = props;
+  const { sidebar, railKey, railProjectId, crumbs, title, scopeChip, filePath, initialContent, initialMtime, language, sizeBytes, extraActions, validate, embedded, readOnly, readOnlyHint } = props;
   const { toast_msg } = useAppStore();
   const { scanAll } = useConfigStore();
 
@@ -146,15 +150,18 @@ export function FileEditorScreen(props: FileEditorScreenProps) {
             crumbs={crumbs}
             right={
               <>
-                <div style={{ fontSize: 11, color: 'var(--cc-muted)', display: 'flex', alignItems: 'center', gap: 6, marginRight: 8 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cc-muted-soft)' }} />
-                  <span>只读</span>
+                <div
+                  title={readOnly ? readOnlyHint : undefined}
+                  style={{ fontSize: 11, color: 'var(--cc-muted)', display: 'flex', alignItems: 'center', gap: 6, marginRight: 8 }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: readOnly ? 'var(--cc-muted)' : 'var(--cc-muted-soft)' }} />
+                  <span>{readOnly ? '只读 · 来自 plugin' : '只读'}</span>
                 </div>
                 {validation && <ValidationPill validation={validation} onClick={() => setShowValidation(v => !v)} />}
                 {language === 'markdown' && <ViewToggle view={view} setView={setView} />}
                 <button className="cc-btn ghost" onClick={onReveal}>在 Finder 中显示</button>
                 {extraActions}
-                <button className="cc-btn primary" onClick={enterEdit}>✎ 编辑</button>
+                {!readOnly && <button className="cc-btn primary" onClick={enterEdit}>✎ 编辑</button>}
               </>
             }
           />

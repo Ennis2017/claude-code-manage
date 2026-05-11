@@ -82,11 +82,78 @@ export interface ProjectConfig {
   has_mcp: boolean;
 }
 
+export interface PluginManifest {
+  name: string | null;
+  description: string | null;
+  version: string | null;
+  author: string | null;
+  homepage: string | null;
+  license: string | null;
+  keywords: string[];
+  raw_path: string;
+  raw_exists: boolean;
+}
+
+export interface PluginContents {
+  skills: SkillFile[];
+  agents: AgentFile[];
+  commands: CommandFile[];
+  hooks_count: number;
+  has_mcp: boolean;
+  has_lsp: boolean;
+}
+
+export interface InstalledPlugin {
+  key: string;
+  name: string;
+  marketplace: string;
+  version: string;
+  install_path: string;
+  install_path_exists: boolean;
+  git_commit_sha: string | null;
+  installed_at: string;
+  last_updated: string;
+  scope: string;
+  enabled: boolean;
+  manifest: PluginManifest;
+  contents: PluginContents;
+}
+
+export interface MarketplacePluginEntry {
+  name: string;
+  description: string | null;
+  version: string | null;
+  category: string | null;
+  source_summary: string;
+}
+
+export interface MarketplaceInfo {
+  id: string;
+  source_kind: string;
+  source_repo: string | null;
+  source_url: string | null;
+  install_location: string;
+  last_updated: string;
+  manifest_path: string;
+  manifest_exists: boolean;
+  advertised: MarketplacePluginEntry[];
+  owner_name: string | null;
+  description: string | null;
+}
+
+export interface PluginSnapshot {
+  plugins_dir: string;
+  marketplaces: MarketplaceInfo[];
+  installed: InstalledPlugin[];
+  warnings: string[];
+}
+
 export interface ClaudeConfigSnapshot {
   scanned_at: string;
   claude_code_version: string | null;
   user_config: UserConfig;
   projects: ProjectConfig[];
+  plugins: PluginSnapshot;
 }
 
 export interface RememberedProject {
@@ -104,6 +171,7 @@ interface ConfigStore {
   scanAll: () => Promise<void>;
   addProject: (path: string) => Promise<void>;
   removeProject: (path: string) => Promise<void>;
+  setPluginEnabled: (key: string, enabled: boolean) => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigStore>((set, get) => ({
@@ -132,6 +200,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   removeProject: async (path: string) => {
     await invoke('remove_project', { path });
+    await get().scanAll();
+  },
+
+  setPluginEnabled: async (key: string, enabled: boolean) => {
+    // settings.json 的 mtime 在并发场景下可能漂移,这里不传 expected_mtime
+    // (后端写入是原子 rename,不会破坏现有内容)
+    await invoke('set_plugin_enabled', { key, enabled, expectedMtime: null });
     await get().scanAll();
   },
 }));

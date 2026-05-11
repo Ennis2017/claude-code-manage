@@ -142,13 +142,14 @@ export function Dashboard() {
             <h2 style={{ fontSize: 15, fontWeight: 600 }}>全局配置 <span style={{ color: 'var(--cc-muted-soft)', fontWeight: 400, marginLeft: 6 }}>· ~/.claude</span></h2>
             <span style={{ fontSize: 11.5, color: 'var(--cc-orange-deep)' }}>打开 →</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10, marginBottom: 28 }}>
             {[
               { l: 'Settings', v: snapshot?.user_config.settings ? Object.keys(snapshot.user_config.settings.raw as object).length + ' 字段' : '—', s: 'settings.json', m: snapshot?.user_config.settings?.mtime || '', onClick: () => go({ name: 'global', screen: 'settings' }) },
               { l: '记忆', v: snapshot?.user_config.memory ? (snapshot.user_config.memory.size_bytes / 1024).toFixed(1) + 'KB' : '—', s: 'CLAUDE.md', m: snapshot?.user_config.memory?.mtime || '', onClick: () => go({ name: 'global', screen: 'memory' }) },
               { l: '命令', v: userCommands.length, s: '斜杠', m: '.claude/commands', onClick: () => go({ name: 'global', screen: 'overview' }) },
               { l: 'Skills', v: userSkills.length, s: '技能', m: '.claude/skills', onClick: () => go({ name: 'global', screen: 'overview' }) },
               { l: 'Agents', v: userAgents.length, s: '子代理', m: '.claude/agents', onClick: () => go({ name: 'global', screen: 'overview' }) },
+              { l: 'Plugins', v: snapshot?.plugins?.installed?.length ?? 0, s: snapshot?.plugins?.installed?.some(p => !p.enabled) ? '部分已禁用' : '已安装', m: '.claude/plugins', onClick: () => go({ name: 'plugins' }) },
             ].map((x, i) => (
               <div
                 key={i}

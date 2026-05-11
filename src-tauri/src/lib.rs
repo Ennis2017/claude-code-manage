@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use chrono::Utc;
 use model::{ClaudeConfigSnapshot, ProjectConfig, RememberedProject};
-use services::{fs_write, project_list, scanner, search, watcher};
+use services::{fs_write, plugins as plugins_svc, project_list, scanner, search, watcher};
 use tauri::Manager;
 
 struct WatcherHandle(Mutex<Option<watcher::WatchState>>);
@@ -24,12 +24,30 @@ fn scan_all() -> Result<ClaudeConfigSnapshot, String> {
 
     let version = get_claude_version_inner();
 
+    let plugins = plugins_svc::scan();
+
     Ok(ClaudeConfigSnapshot {
         scanned_at: Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
         claude_code_version: version,
         user_config,
         projects,
+        plugins,
     })
+}
+
+#[tauri::command]
+fn scan_plugins() -> model::PluginSnapshot {
+    plugins_svc::scan()
+}
+
+#[tauri::command]
+fn set_plugin_enabled(
+    key: String,
+    enabled: bool,
+    expected_mtime: Option<String>,
+) -> Result<fs_write::WriteResult, String> {
+    plugins_svc::set_enabled(&key, enabled, expected_mtime.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -220,6 +238,8 @@ pub fn run() {
             reveal_in_finder,
             restart_watcher,
             search_all,
+            scan_plugins,
+            set_plugin_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

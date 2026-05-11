@@ -11,6 +11,7 @@ import { Dashboard } from './screens/Dashboard';
 import { GlobalConfig } from './screens/GlobalConfig';
 import { ProjectDetail } from './screens/ProjectDetail';
 import { Catalog } from './screens/Catalog';
+import { PluginsScreen } from './screens/PluginsScreen';
 
 export default function App() {
   return (
@@ -67,6 +68,7 @@ function AppInner() {
   else if (route.name === 'global') screen = <GlobalConfig />;
   else if (route.name === 'project') screen = <ProjectDetail />;
   else if (route.name === 'catalog') screen = <Catalog />;
+  else if (route.name === 'plugins') screen = <PluginsScreen />;
   else screen = <Dashboard />;
 
   return (
